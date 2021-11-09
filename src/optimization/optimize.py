@@ -13,7 +13,7 @@ def optimize_model(model: nn.Module,
                    optimization_steps: int,
                    ) -> torch.tensor:
     size = (1, 3, model.img_size, model.img_size)
-    input_tensor = torch.zeros(size=size, requires_grad=True).float().to(next(model.parameters()).device)
+    input_tensor = torch.zeros(size=size, device=next(model.paramaeters()).device).float().requires_grad_()
     input_init_fn(input_tensor)
     optimizer = optimizer_cls(params=[input_tensor], **optimizer_kwargs)
     for i in range(optimization_steps):
