@@ -12,14 +12,14 @@ def optimize_model(model: nn.Module,
                    optimizer_kwargs: Dict[str, Any],
                    optimization_steps: int,
                    ) -> torch.tensor:
-    size = ()  # TODO: set size
-    input_tensor = torch.zeros(size=size, requires_grad=True).float().to(model.device)
+    size = (1, 3, model.img_size, model.img_size)
+    input_tensor = torch.zeros(size=size, requires_grad=True).float().to(next(model.parameters()).device)
     input_init_fn(input_tensor)
     optimizer = optimizer_cls(params=[input_tensor], **optimizer_kwargs)
     for i in range(optimization_steps):
         optimizer.zero_grad()
         output = model(input_tensor)  # probably should be batched or something
-        interesting_output = output.data[output_mask]
+        interesting_output = output[output_mask]
         loss = loss_agg_fn(interesting_output)
         loss.backward()
         optimizer.step()
