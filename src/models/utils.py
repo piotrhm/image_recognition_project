@@ -1,3 +1,7 @@
+from typing import Dict, Any
+
+import os
+import re
 import torch
 import requests
 import torch.nn as nn
@@ -24,7 +28,18 @@ def download_checkpoint(checkpoint_url: str, checkpoint_target_path: str) -> str
     return checkpoint_target_path
 
 
-def load_model(model: nn.Module, checkpoint_path: str, device: str = "cuda") -> nn.Module:
+def load_model(model_str: str, checkpoint_path: str, device: str = "cuda", model_kwargs: Dict[str, Any] = {}) -> nn.Module:
+    if model_str.lower() == 'protopnet':
+        os.system('git clone https://github.com/cfchen-duke/ProtoPNet.git')
+        with open('ProtoPNet/model.py', 'r') as f:
+            text = f.read()
+        with open('ProtoPNet/model.py', 'w') as f:
+            f.write(re.sub(r'^from (\w+_features|receptive_field)', r'from .\1', text, flags=re.MULTILINE))
+        from ProtoPNet.model import construct_PPNet
+        args = dict({'base_architecture': 'resnet34', 'add_on_layers_type': 'regular'}, **model_kwargs)
+        model = construct_PPNet(**args)
+    else:
+        raise NotImplementedError(f'No model for string: {model_str}')
     model = model.to(device)
     model.load_state_dict(torch.load(checkpoint_path))
     return model
