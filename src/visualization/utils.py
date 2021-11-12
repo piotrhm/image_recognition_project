@@ -8,9 +8,9 @@ import torch.nn.functional as F
 def get_output_mask_from_prototypes_list(model: nn.Module, prototypes_list: List[Tuple[int, int]]) -> torch.tensor:
     # prototypes_list consist of pairs (class_idx, prototype_idx)
     proto_per_class = model.num_prototypes // model.num_classes
-    ret = torch.zeros(1, model.num_prototypes, dtype=bool).to(next(model.parameters()).device)
+    ret = torch.zeros(model.num_prototypes, dtype=bool).to(next(model.parameters()).device)
     for i, j in prototypes_list:
-        ret[0, i*proto_per_class + j] = True
+        ret[i*proto_per_class + j] = True
     return ret
 
 

@@ -9,11 +9,11 @@ from .utils import prepare_model_for_prototype_optimization, get_output_mask_fro
 
 def visualize_prototypes(model: nn.Module,
                          prototypes_list: List[Tuple[int, int]],
-                         optimization_steps: int,
                          loss_agg_fn: Callable[[torch.tensor], torch.tensor] = torch.mean,
                          input_init_fn: Callable[[torch.tensor], None] = torch.nn.init.uniform_,
                          optimizer_cls: Type[torch.optim.Optimizer] = torch.optim.Adam,
-                         optimizer_kwargs: Optional[Dict[str, Any]] = None
+                         optimizer_kwargs: Optional[Dict[str, Any]] = None,
+                         optimization_steps: int = 20
                          ) -> torch.tensor:
     model = prepare_model_for_prototype_optimization(model)
     output_mask = get_output_mask_from_prototypes_list(model, prototypes_list)
