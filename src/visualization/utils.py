@@ -6,7 +6,7 @@ import torch.nn.functional as F
 
 
 def get_output_mask_from_prototypes_list(model: nn.Module, prototypes_list: List[Tuple[int, int]]) -> torch.tensor:
-    # prototypes_list consist of pairs (class_idx, prototype_idx)
+    """Takes prototypes as a list of pairs (class index, prototype index) and returns a boolean tensor that masks out everything else."""
     proto_per_class = model.num_prototypes // model.num_classes
     ret = torch.zeros(model.num_prototypes, dtype=bool).to(next(model.parameters()).device)
     for i, j in prototypes_list:
@@ -15,8 +15,7 @@ def get_output_mask_from_prototypes_list(model: nn.Module, prototypes_list: List
 
 
 def prepare_model_for_prototype_optimization(model: nn.Module) -> nn.Module:
-    # Freeze the entire model and somehow transform (cut?) it so it outputs the propotype-similarity layer
-    # this code is adapted from ProtoPNet source code
+    """Takes a ProtoPNet model, freezes all its parameters, and transforms it to only output prototype similarity scores."""
     def _forward(x):
         distances = model.prototype_distances(x)
         # global min pooling

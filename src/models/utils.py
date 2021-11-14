@@ -10,6 +10,7 @@ from tqdm import tqdm
 
 
 def download_checkpoint(checkpoint_url: str, checkpoint_target_path: str) -> str:
+    """Downloads a file from given url and saves at target path. Currently handles only Google Drive."""
     if 'drive.google.com' in checkpoint_url:
         session = requests.session()
         file_id = checkpoint_url.split('/')[5]
@@ -29,6 +30,17 @@ def download_checkpoint(checkpoint_url: str, checkpoint_target_path: str) -> str
 
 
 def load_model(model_str: str, checkpoint_path: str, device: str = "cuda", model_kwargs: Dict[str, Any] = {}) -> nn.Module:
+    """
+    Constructs a model object corresponding to the given string and loads state dict from a file.
+
+    Parameters:
+        model_str: model string; possible options: 'protopnet' (case insensitive)
+        checkpoint_path: path to a state dict file
+        device: which device to load to
+        model_kwargs: arguments for model object constructor
+    Returns:
+        Loaded model
+    """
     if model_str.lower() == 'protopnet':
         os.system('git clone https://github.com/cfchen-duke/ProtoPNet.git')
         with open('ProtoPNet/model.py', 'r') as f:
