@@ -7,14 +7,13 @@ import torch.nn as nn
 def optimize_model(model: nn.Module,
                    output_mask: torch.tensor,
                    loss_agg_fn: Callable[[torch.tensor], torch.tensor],
-                   input_init_fn: Callable[[torch.tensor], None],
+                   input_tensor: torch.tensor,
                    optimizer_cls: Type[torch.optim.Optimizer],
                    optimizer_kwargs: Dict[str, Any],
                    optimization_steps: int,
                    ) -> torch.tensor:
-    size = (3, model.img_size, model.img_size)
-    input_tensor = torch.zeros(size=size, device=next(model.parameters()).device).float().requires_grad_()
-    input_init_fn(input_tensor)
+    input_tensor = input_tensor.to(next(model.parameters()).device).float()
+    input_tensor.requires_grad_()
     optimizer = optimizer_cls(params=[input_tensor], **optimizer_kwargs)
     for i in range(optimization_steps):
         optimizer.zero_grad()
