@@ -10,6 +10,7 @@ from .utils import prepare_model_for_prototype_optimization, get_output_mask_fro
 def visualize_prototypes(model: nn.Module,
                          prototypes_list: List[Tuple[int, int]],
                          loss_agg_fn: Callable[[torch.tensor], torch.tensor] = torch.mean,
+                         optimization_direction: str = 'maximize',
                          input_init_fn: Callable[[torch.tensor], None] = torch.nn.init.normal_,
                          optimizer_cls: Type[torch.optim.Optimizer] = torch.optim.Adam,
                          optimizer_kwargs: Optional[Dict[str, Any]] = None,
@@ -22,6 +23,7 @@ def visualize_prototypes(model: nn.Module,
         model: model to use
         prototypes_list: prototypes to optimize the activation of. List of pairs (class index, prototype index)
         loss_agg_fn: loss aggregation function that calculates loss from model's masked output
+        optimization_direction: direction of optimization. Can be `minimize` or 'maximize'
         input_init_fn: function used for input initialization
         optimizer_cls: optimizer class
         optimizer_kwargs: arguments for the optimizer
@@ -35,6 +37,7 @@ def visualize_prototypes(model: nn.Module,
     optimized_input = optimize_model(model=model,
                                      output_mask=output_mask,
                                      loss_agg_fn=loss_agg_fn,
+                                     optimization_direction=optimization_direction,
                                      input_init_fn=input_init_fn,
                                      optimizer_cls=optimizer_cls,
                                      optimizer_kwargs=optimizer_kwargs,

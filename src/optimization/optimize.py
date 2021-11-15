@@ -7,6 +7,7 @@ import torch.nn as nn
 def optimize_model(model: nn.Module,
                    output_mask: torch.tensor,
                    loss_agg_fn: Callable[[torch.tensor], torch.tensor],
+                   optimization_direction: str,
                    input_init_fn: Callable[[torch.tensor], None],
                    optimizer_cls: Type[torch.optim.Optimizer],
                    optimizer_kwargs: Dict[str, Any],
@@ -19,6 +20,7 @@ def optimize_model(model: nn.Module,
         model: model to use
         output_mask: boolean tensor that filters only desired elements from model's output
         loss_agg_fn: loss aggregation function that calculates loss from model's masked output
+        optimization_direction: direction of optimization. Can be `minimize` or 'maximize'
         input_init_fn: function used for input initialization
         optimizer_cls: optimizer class
         optimizer_kwargs: arguments for the optimizer
@@ -26,6 +28,7 @@ def optimize_model(model: nn.Module,
     Returns:
         optimized tensor
     """
+    assert optimization_direction in ['maximize', 'minimize']
 
     size = (3, model.img_size, model.img_size)
     input_tensor = torch.zeros(size=size, device=next(model.parameters()).device).float()
@@ -37,6 +40,7 @@ def optimize_model(model: nn.Module,
         output = model(input_tensor.unsqueeze(0))  # probably should be batched or something
         interesting_output = output[output_mask.unsqueeze(0)]
         loss = loss_agg_fn(interesting_output)
+        loss = loss if optimization_direction == 'minimize' else -loss
         loss.backward()
         optimizer.step()
 
