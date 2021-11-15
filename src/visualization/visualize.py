@@ -5,14 +5,15 @@ import torch.nn as nn
 
 from src.optimization.optimize import optimize_model
 from .utils import prepare_model_for_prototype_optimization, get_output_mask_from_prototypes_list
+from ..optimization.optimizers import NormalizedOptimizer
 
 
 def visualize_prototypes(model: nn.Module,
                          prototypes_list: List[Tuple[int, int]],
                          loss_agg_fn: Callable[[torch.tensor], torch.tensor] = torch.mean,
                          optimization_direction: str = 'maximize',
-                         input_init_fn: Callable[[torch.tensor], None] = torch.nn.init.normal_,
-                         optimizer_cls: Type[torch.optim.Optimizer] = torch.optim.Adam,
+                         input_init_fn: Callable[[torch.tensor], None] = torch.nn.init.uniform_,
+                         optimizer_cls: Type[torch.optim.Optimizer] = NormalizedOptimizer,
                          optimizer_kwargs: Optional[Dict[str, Any]] = None,
                          optimization_steps: int = 20
                          ) -> torch.tensor:

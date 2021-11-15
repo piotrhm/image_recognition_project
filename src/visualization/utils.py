@@ -17,7 +17,7 @@ def get_output_mask_from_prototypes_list(model: nn.Module, prototypes_list: List
 
 def prepare_model_for_prototype_optimization(model: nn.Module) -> nn.Module:
     """Takes a ProtoPNet model, freezes all its parameters
-    and transforms it to only output prototype similarity scores."""
+    and transforms it to only output prototype similarity scores for a single patch."""
 
     def _forward(x):
         distances = model.prototype_distances(x)

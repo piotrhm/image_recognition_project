@@ -1,3 +1,4 @@
+import logging
 from typing import Dict, Any
 
 import os
@@ -11,6 +12,9 @@ from tqdm import tqdm
 
 def download_checkpoint(checkpoint_url: str, checkpoint_target_path: str) -> str:
     """Downloads a file from given url and saves at target path. Currently handles only Google Drive."""
+    if os.path.exists(checkpoint_target_path):
+        logging.info(f'Checkpoint {checkpoint_target_path} exists. Returning it...')
+        return checkpoint_target_path
     if 'drive.google.com' in checkpoint_url:
         session = requests.session()
         file_id = checkpoint_url.split('/')[5]

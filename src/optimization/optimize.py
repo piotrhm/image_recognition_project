@@ -37,7 +37,7 @@ def optimize_model(model: nn.Module,
     optimizer = optimizer_cls(params=[input_tensor], **optimizer_kwargs)
     for i in range(optimization_steps):
         optimizer.zero_grad()
-        output = model(input_tensor.unsqueeze(0))  # probably should be batched or something
+        output = model(input_tensor.unsqueeze(0))
         interesting_output = output[output_mask.unsqueeze(0)]
         loss = loss_agg_fn(interesting_output)
         loss = loss if optimization_direction == 'minimize' else -loss
