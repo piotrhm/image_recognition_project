@@ -21,12 +21,20 @@ def prepare_model_for_prototype_optimization(model: nn.Module) -> nn.Module:
 
     def _forward(x):
         distances = model.prototype_distances(x)
-        # global min pooling
-        min_distances = -F.max_pool2d(-distances,
-                                      kernel_size=(distances.size()[2],
-                                                   distances.size()[3]))
-        min_distances = min_distances.view(-1, model.num_prototypes)
-        prototype_activations = model.distance_2_similarity(min_distances)
+        distances = distances.view(distances.shape[0], model.num_prototypes, -1)
+
+        # Log and then mean
+        prototype_activations = model.distance_2_similarity(distances)
+        prototype_activations = torch.mean(prototype_activations, dim=-1)
+
+        # Mean and then log
+        # distances = torch.mean(distances, dim=-1)
+        # prototype_activations = model.distance_2_similarity(distances)
+
+        # Fuck the log
+        # distances = torch.mean(distances, dim=-1)
+        # prototype_activations = distances
+
         return prototype_activations
 
     for f in model.parameters():
