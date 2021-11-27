@@ -88,16 +88,18 @@ def visualize_real_prototype(model: nn.Module, img_name: str, class_number: int,
     Returns:
         image with bounding box
     """
-
+    device = next(model.parameters()).device
     img_size = 224
     transform = tfs.Compose([tfs.Resize(size=(img_size, img_size)), tfs.ToTensor()])
 
     input_img = Image.open("data/train_cropped/" + img_name)
     input_tensor = transform(input_img)
     input_tensor = input_tensor.unsqueeze(0)
-    distances = model.prototype_distances(input_tensor)
-    activations = model.distance_2_similarity(distances)
-    input = activations[0][class_number * 10 + prototype_number].unsqueeze(0).unsqueeze(0)
+    with torch.no_grad():
+        distances = model.prototype_distances(input_tensor.to(device))
+        activations = model.distance_2_similarity(distances).cpu()
+    proto_per_class = model.num_prototypes // model.num_classes
+    input = activations[0][class_number * proto_per_class + prototype_number].unsqueeze(0).unsqueeze(0)
 
     m = nn.Upsample(size=(img_size, img_size), mode='nearest')
     output = m(input)
