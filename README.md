@@ -7,3 +7,4 @@
 4. Follow PEP8.
 5. Use descriptive methods, functions and variables names.
 6. Explain what you do in the notebooks: all experiments should be described. 
+7. Add every package (and version) you used to requirements.
