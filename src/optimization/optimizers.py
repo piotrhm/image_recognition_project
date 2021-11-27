@@ -10,4 +10,4 @@ class NormalizedOptimizer(torch.optim.Optimizer):
         for group in self.param_groups:
             lr = group['lr']
             for p in group['params']:
-                p.data += (lr / torch.mean(torch.abs(p.grad))) * p.grad
+                p.data -= (lr / torch.mean(torch.abs(p.grad))) * p.grad
