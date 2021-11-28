@@ -11,7 +11,6 @@ def visualize_prototypes(model: nn.Module,
                          prototypes_list: List[Tuple[int, int]],
                          input_tensor: torch.tensor,
                          loss_agg_fn: Callable[[torch.tensor, torch.tensor], torch.tensor] = lambda _, x: -torch.mean(x),
-                         optimization_direction: str = 'maximize',
                          optimizer_cls: Type[torch.optim.Optimizer] = torch.optim.Adam,
                          optimizer_kwargs: Optional[Dict[str, Any]] = None,
                          optimization_steps: int = 20,
@@ -27,7 +26,6 @@ def visualize_prototypes(model: nn.Module,
         prototypes_list: prototypes to optimize the activation of. List of pairs (class index, prototype index)
         input_tensor: an initial tensor
         loss_agg_fn: takes input_tensor and model's masked output, outputs aggregated loss
-        optimization_direction: direction of optimization. Can be `minimize` or 'maximize'
         optimizer_cls: optimizer class
         optimizer_kwargs: arguments for the optimizer
         optimization_steps: number of steps to optimize for
@@ -43,7 +41,6 @@ def visualize_prototypes(model: nn.Module,
     optimized_input = optimize_model(model=model,
                                      output_mask=output_mask,
                                      loss_agg_fn=loss_agg_fn,
-                                     optimization_direction=optimization_direction,
                                      input_tensor=input_tensor,
                                      optimizer_cls=optimizer_cls,
                                      optimizer_kwargs=optimizer_kwargs,

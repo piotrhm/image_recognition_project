@@ -58,4 +58,5 @@ def load_model(model_str: str, checkpoint_path: str, device: str = "cuda", model
         raise NotImplementedError(f'No model for string: {model_str}')
     model = model.to(device)
     model.load_state_dict(torch.load(checkpoint_path))
+    model.eval()
     return model

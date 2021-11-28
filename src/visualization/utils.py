@@ -19,7 +19,8 @@ def prepare_model_for_prototype_optimization(model: nn.Module) -> nn.Module:
     """Takes a ProtoPNet model, freezes all its parameters
     and transforms it to only output prototype similarity scores for a single patch."""
 
-    def _forward(x):
+    def _compute_similarity(x):
+        """Return some kind of similarity, which is to be maximized"""
         distances = model.prototype_distances(x)
         distances = distances.view(distances.shape[0], model.num_prototypes, -1)
 
@@ -31,13 +32,13 @@ def prepare_model_for_prototype_optimization(model: nn.Module) -> nn.Module:
         # distances = torch.mean(distances, dim=-1)
         # prototype_activations = model.distance_2_similarity(distances)
 
-        # Fuck the log
+        # Fu*k the log
         # distances = torch.mean(distances, dim=-1)
-        # prototype_activations = distances
+        # prototype_activations = -distances
 
         return prototype_activations
 
     for f in model.parameters():
         f.requires_grad = False
-    model.forward = _forward
+    model.forward = _compute_similarity
     return model
