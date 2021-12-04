@@ -37,7 +37,7 @@ def optimize_model(model: nn.Module,
     optimizer = optimizer_cls(params=[input_tensor], **optimizer_kwargs)
     for i in range(optimization_steps):
         optimizer.zero_grad()
-        loss = loss_agg_fn(model, input_tensor.unsqueeze(0), output_mask.unsqueeze(0))
+        loss = loss_agg_fn(model, input_tensor.unsqueeze(0), prototypes_mask.unsqueeze(0))
         if i % print_interval == 0:
             print(f'step: {i}/{optimization_steps}, loss: {loss}')
         if display_interval and i % display_interval == 0:

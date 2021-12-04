@@ -1,4 +1,4 @@
-from typing import List, Tuple, Callable, Type, Dict, Any, Optional, Union
+from typing import List, Tuple, Callable, Type, Dict, Any, Optional
 
 import torch
 import torch.nn as nn
@@ -42,7 +42,7 @@ def visualize_prototypes(model: nn.Module,
     prototypes_mask = get_prototypes_mask_from_prototypes_list(model, prototypes_list)
     optimizer_kwargs = optimizer_kwargs if optimizer_kwargs is not None else {'lr': 0.01}
     optimized_input = optimize_model(model=model,
-                                     output_mask=output_mask,
+                                     prototypes_mask=prototypes_mask,
                                      loss_agg_fn=loss_agg_fn,
                                      input_tensor=input_tensor,
                                      optimizer_cls=optimizer_cls,
