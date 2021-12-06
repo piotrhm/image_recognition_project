@@ -1,16 +1,14 @@
-from typing import Optional
-
 import torch
 
 
 class AggregationFn:
     def __init__(
         self,
-        metric: Optional[str] = "distance",
-        agg_fn: Optional[str] = "mean",
-        ptype_lvl_agg_fn: Optional[str] = "mean",
-        exponent: Optional[float] = 1.0,
-        patches_mask: Optional[torch.tensor] = torch.ones(7, 7, dtype=bool),
+        metric: str = "distance",
+        agg_fn: str = "mean",
+        ptype_lvl_agg_fn: str = "mean",
+        exponent: float = 1.0,
+        patches_mask: torch.tensor = torch.ones(7, 7, dtype=bool),
     ):
 
         """
