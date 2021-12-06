@@ -2,7 +2,8 @@ from typing import List, Tuple
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+import torchvision.transforms as tfs
+import numpy as np
 
 
 def get_output_mask_from_prototypes_list(model: nn.Module, prototypes_list: List[Tuple[int, int]]) -> torch.tensor:
@@ -42,3 +43,16 @@ def prepare_model_for_prototype_optimization(model: nn.Module) -> nn.Module:
         f.requires_grad = False
     model.forward = _compute_similarity
     return model
+
+
+mean = np.array([0.485, 0.456, 0.406])
+std = np.array([0.229, 0.224, 0.225])
+
+preprocess = tfs.Compose([tfs.ToTensor(), tfs.Normalize(mean, std)])
+
+
+def deprocess(image_np):
+    image_np = image_np.squeeze().transpose(1, 2, 0)
+    image_np = image_np * std.reshape((1, 1, 3)) + mean.reshape((1, 1, 3))
+    image_np = np.clip(image_np, 0.0, 255.0)
+    return image_np
