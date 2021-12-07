@@ -8,7 +8,7 @@ import torchvision
 import torchvision.transforms as tfs
 
 from src.optimization.optimize import optimize_model
-from .utils import prepare_model_for_prototype_optimization, get_output_mask_from_prototypes_list, preprocess, deprocess
+from .utils import prepare_model_for_prototype_optimization, get_output_mask_from_prototypes_list
 
 
 def visualize_prototypes(model: nn.Module,
