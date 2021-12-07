@@ -24,9 +24,12 @@ class CustomTransforms:
         """
 
         self.transforms = tfs.Compose([
-            tfs.ColorJitter(color_jitter_args[0], color_jitter_args[1], color_jitter_args[2], color_jitter_args[3]),
+            tfs.ColorJitter(brightness=color_jitter_args[0],
+                            contrast=color_jitter_args[1],
+                            saturation=color_jitter_args[2],
+                            hue=color_jitter_args[3]),
             tfs.RandomResizedCrop(size=random_crop_args[0], scale=random_crop_args[1]),
-            tfs.RandomRotation(range(-rotate, rotate + 1)),
+            tfs.RandomRotation((-rotate, rotate)),
             tfs.GaussianBlur(kernel_size=gaussian_blur_args[0], sigma=gaussian_blur_args[1])
         ])
 
@@ -37,8 +40,9 @@ class CustomTransforms:
 
 
 transforms_base = tfs.Compose([
-    tfs.ColorJitter(brightness=1.0, contrast=1.0, saturation=1.0, hue=0.25),
-    tfs.RandomResizedCrop(size=224, scale=(0.9, 1.1)),
-    tfs.RandomRotation(range(-5, 6)),
-    tfs.GaussianBlur(kernel_size=7, sigma=2)
+    tfs.ToPILImage(),
+    tfs.ColorJitter(brightness=0, contrast=0, saturation=0, hue=0),
+    tfs.RandomRotation((-1, 1)),
+    tfs.RandomResizedCrop(size=224, scale=(0.99, 1)),
+    tfs.ToTensor(),
 ])

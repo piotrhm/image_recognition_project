@@ -92,10 +92,10 @@ def visualize_prototypes_octaves(model: nn.Module,
     Returns:
         Optimized tensor
     """
-    input_arr = preprocess(input_tensor).unsqueeze(0).cpu().data.numpy()
+    input_arr = input_tensor.data.numpy()
     octaves = [input_arr]
     for _ in range(num_octaves - 1):
-        octaves.append(nd.zoom(octaves[-1], (1, 1, 1 / octave_scale, 1 / octave_scale), order=1))
+        octaves.append(nd.zoom(octaves[-1], (1, 1 / octave_scale, 1 / octave_scale), order=1))
 
     optimization_steps /= num_octaves
 
@@ -106,8 +106,8 @@ def visualize_prototypes_octaves(model: nn.Module,
         image = octave_base + detail
         input_tensor = torch.from_numpy(image)
         dreamed_image = visualize_prototypes(model, prototypes_list, input_tensor, loss_agg_fn, optimizer_cls,
-                                             optimizer_kwargs, optimization_steps, transforms, before_optim_step,
+                                             optimizer_kwargs, int(optimization_steps), transforms, before_optim_step,
                                              print_interval, display_interval)
         detail = dreamed_image - octave_base
 
-    return deprocess(dreamed_image)
+    return dreamed_image

@@ -41,7 +41,9 @@ def optimize_model(model: nn.Module,
     optimizer = optimizer_cls(params=[input_tensor], **optimizer_kwargs)
     for i in range(optimization_steps):
         optimizer.zero_grad()
-        input_tensor = transforms(input_tensor)
+        with torch.no_grad():
+            input_tensor = transforms(input_tensor)
+            input_tensor.requires_grad_()
         output = model(input_tensor.unsqueeze(0))
         interesting_output = output[output_mask.unsqueeze(0)]
         loss = loss_agg_fn(input_tensor, interesting_output)
