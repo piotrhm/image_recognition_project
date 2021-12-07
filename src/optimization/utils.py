@@ -1,38 +1,118 @@
 import torch
-import torchvision.transforms as tfs
 import numpy as np
+import torchvision.transforms as tfs
 
 
-class BeforeOptim:
-    def __init__(self, method: str):
-        if method == "clamp":
-            self.method = lambda x: torch.clamp(x, 0, 1)
-        elif method == "normalize":
-            self.method = self.__normalize
-        elif method == "sigmoid":
-            self.method = lambda x: torch.sigmoid(x)
-        elif method == "clamp_dd":
-            self.method = self.__clamp_dd
-        else:
-            raise ValueError("Value Error!")
+class ClampingMinMax:
+    """
+    A class used to define clamping into the range [min, max].
+    """
 
-    def __normalize(self, t):
-        t_min = torch.min(t)
-        t_max = torch.max(t)
-        t_norm = (t - t_min) / (t_max - t_min)
-        return t_norm
-
-    def __clamp_dd(self, t):
-        mean = np.array([0.485, 0.456, 0.406])
-        std = np.array([0.229, 0.224, 0.225])
-
-        t_clamped = torch.zeros((3, 224, 224))
-        for c in range(3):
-            m, s = mean[c], std[c]
-            t_clamped[c, :, :] = torch.clamp(t[c, :, :], -m / s, (1 - m) / s)
-        return t_clamped
+    def __init__(self, min: float = 0, max: float = 1):
+        """
+        Parameters:
+            min: lower-bound of the range to be clamped to
+            max: upper-bound of the range to be clamped to
+        """
+        self.min = min
+        self.max = max
 
     def __call__(self, t):
-        tt = self.method(t)
-        t.data = tfs.GaussianBlur(7, 2)(tt).data
+        """
+        Clamps all elements in input into the range [min, max].
+        """
+        t.data = torch.clamp(t.data, self.min, self.max)
+        return t
+
+
+class ClampingMeanStd:
+    """
+    A class used to define clamping into the range [-mean/std, mean/std] separately for each channel.
+    """
+
+    def __init__(self, mean: np.array = np.array([0.485, 0.456, 0.406]),
+                 std: np.array = np.array([0.229, 0.224, 0.225])):
+        """
+        Parameters:
+            mean: mean
+            std: std
+        """
+        self.mean = mean
+        self.std = std
+
+    def __call__(self, t):
+        """
+        Clamps all elements in input into the range [min, max].
+        """
+        t_clamped = torch.zeros(t.shape)
+        for c in range(3):
+            m, s = self.mean[c], self.std[c]
+            t_clamped[c, :, :] = torch.clamp(t[c, :, :], -m / s, (1 - m) / s)
+        t.data = t_clamped.data
+        return t
+
+
+class NormalizationMinMax:
+    """
+    A class used to define normalization to the range [min, max].
+    """
+
+    def __init__(self, min: float = 0, max: float = 1):
+        """
+        Parameters:
+        min: lower-bound of the range to be normalized to
+        max: upper-bound of the range to be normalized to
+        """
+        self.min = min
+        self.max = max
+
+    def __call__(self, t):
+        """
+        Normalizes all elements in input into the range [min, max].
+        """
+        t_min = torch.min(t)
+        t_max = torch.max(t)
+        t_norm = (self.max - self.min) * (t - t_min) / (t_max - t_min) + self.min
+        t.data = t_norm.data
+        return t
+
+
+class NormalizationMeanStd:
+    """
+    A class used to define normalization with mean and std.
+    """
+
+    def __init__(self, mean: np.array = np.array([0.485, 0.456, 0.406]),
+                 std: np.array = np.array([0.229, 0.224, 0.225])):
+        """
+        Parameters:
+        mean: mean used for normalization
+        std: standard deviation used for normalization
+        """
+        self.mean = mean
+        self.std = std
+
+    def __call__(self, t):
+        """
+        Normalize a tensor image with mean and standard deviation.
+        """
+        t.data = tfs.Normalize(self.mean, self.std)(t).data
+        return t
+
+
+class Sigmoid:
+    pass
+
+
+class BeforeOptimFn:
+    """
+    A class used to define a sequence of transformations on the input.
+    """
+
+    def __init__(self, methods):
+        self.methods = methods
+
+    def __call__(self, t):
+        for m in self.methods:
+            t.data = m(t).data
         return t
