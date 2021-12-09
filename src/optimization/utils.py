@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 import torchvision.transforms as tfs
+from typing import List, Callable
 
 
 class ClampingMinMax:
@@ -30,7 +31,8 @@ class ClampingMeanStd:
     A class used to define clamping into the range [-mean/std, mean/std] separately for each channel.
     """
 
-    def __init__(self, mean: np.array = np.array([0.485, 0.456, 0.406]),
+    def __init__(self,
+                 mean: np.array = np.array([0.485, 0.456, 0.406]),
                  std: np.array = np.array([0.229, 0.224, 0.225])):
         """
         Parameters:
@@ -60,8 +62,8 @@ class NormalizationMinMax:
     def __init__(self, min: float = 0, max: float = 1):
         """
         Parameters:
-        min: lower-bound of the range to be normalized to
-        max: upper-bound of the range to be normalized to
+            min: lower-bound of the range to be normalized to
+            max: upper-bound of the range to be normalized to
         """
         self.min = min
         self.max = max
@@ -82,26 +84,23 @@ class NormalizationMeanStd:
     A class used to define normalization with mean and std.
     """
 
-    def __init__(self, mean: np.array = np.array([0.485, 0.456, 0.406]),
+    def __init__(self,
+                 mean: np.array = np.array([0.485, 0.456, 0.406]),
                  std: np.array = np.array([0.229, 0.224, 0.225])):
         """
         Parameters:
-        mean: mean used for normalization
-        std: standard deviation used for normalization
+            mean: mean used for normalization
+            std: standard deviation used for normalization
         """
         self.mean = mean
         self.std = std
 
     def __call__(self, t):
         """
-        Normalize a tensor image with mean and standard deviation.
+        Normalizes tensor image with mean and standard deviation.
         """
         t.data = tfs.Normalize(self.mean, self.std)(t).data
         return t
-
-
-class Sigmoid:
-    pass
 
 
 class BeforeOptimFn:
@@ -109,10 +108,17 @@ class BeforeOptimFn:
     A class used to define a sequence of transformations on the input.
     """
 
-    def __init__(self, methods):
+    def __init__(self, methods: List[Callable]):
+        """
+        Parameters:
+            methods: list of transformations
+        """
         self.methods = methods
 
     def __call__(self, t):
+        """
+        Applies all transformations to the input.
+        """
         for m in self.methods:
             t.data = m(t).data
         return t
