@@ -44,7 +44,7 @@ class ClampingMeanStd:
 
     def __call__(self, t):
         """
-        Clamps all elements in input into the range [min, max].
+        Clamps all elements in input into the range [-mean/std, mean/std].
         """
         t_clamped = torch.zeros(t.shape)
         for c in range(3):
