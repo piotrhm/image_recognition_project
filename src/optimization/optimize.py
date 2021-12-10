@@ -3,15 +3,18 @@ from typing import Callable, Type, Dict, Any, Optional
 import torch
 import torch.nn as nn
 import torchvision.transforms.functional as F
+from torch import Tensor
+from torch.optim import Optimizer
+
 
 def optimize_model(model: nn.Module,
-                   prototypes_mask: torch.tensor,
-                   input_tensor: torch.tensor,
-                   loss_agg_fn: Callable[[torch.tensor, torch.tensor], torch.tensor],
-                   optimizer_cls: Type[torch.optim.Optimizer],
+                   prototypes_mask: Tensor,
+                   input_tensor: Tensor,
+                   loss_agg_fn: Callable[[Tensor, Tensor], Tensor],
+                   optimizer_cls: Type[Optimizer],
                    optimizer_kwargs: Dict[str, Any],
                    optimization_steps: int,
-                   before_optim_step: Callable[[torch.tensor], None],
+                   before_optim_step: Callable[[Tensor], None],
                    print_interval: int,
                    display_interval: Optional[int]
                    ) -> torch.tensor:
@@ -32,6 +35,7 @@ def optimize_model(model: nn.Module,
     Returns:
         optimized tensor
     """
+
     input_tensor = input_tensor.to(next(model.parameters()).device)
     input_tensor.requires_grad_()
     optimizer = optimizer_cls(params=[input_tensor], **optimizer_kwargs)

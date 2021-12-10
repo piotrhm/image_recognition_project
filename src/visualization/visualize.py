@@ -3,10 +3,10 @@ from typing import List, Tuple, Callable, Type, Dict, Any, Optional
 import torch
 import torch.nn as nn
 
+from src.optimization.aggregate import AggregationFn
 from src.optimization.optimize import optimize_model
 from .utils import prepare_model_for_prototype_optimization, get_prototypes_mask_from_prototypes_list
 
-from src.optimization.aggregate import AggregationFn
 
 def visualize_prototypes(model: nn.Module,
                          prototypes_list: List[Tuple[int, int]],
@@ -19,7 +19,6 @@ def visualize_prototypes(model: nn.Module,
                          print_interval: int = 100,
                          display_interval: Optional[int] = 500
                          ) -> torch.tensor:
-
     """
     Optimizes a tensor to minimize the given loss.
 
