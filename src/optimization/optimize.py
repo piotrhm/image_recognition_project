@@ -5,9 +5,8 @@ import torch.nn as nn
 import torchvision
 import torchvision.transforms.functional as F
 
-
 def optimize_model(model: nn.Module,
-                   output_mask: torch.tensor,
+                   prototypes_mask: torch.tensor,
                    input_tensor: torch.tensor,
                    loss_agg_fn: Callable[[torch.tensor, torch.tensor], torch.tensor],
                    optimizer_cls: Type[torch.optim.Optimizer],
@@ -23,9 +22,9 @@ def optimize_model(model: nn.Module,
 
     Parameters:
         model: model to use
-        output_mask: boolean tensor that filters only desired elements from model's output
+        prototypes_mask: boolean tensor that filters only desired elements from model's output
         input_tensor: an initial tensor
-        loss_agg_fn: takes input_tensor and model's masked output, outputs aggregated loss
+        loss_agg_fn: AggregationFn, outputs aggregated loss
         optimizer_cls: optimizer class
         optimizer_kwargs: arguments for the optimizer
         optimization_steps: number of steps to optimize for
@@ -44,9 +43,7 @@ def optimize_model(model: nn.Module,
         with torch.no_grad():
             input_tensor = transforms(input_tensor)
             input_tensor.requires_grad_()
-        output = model(input_tensor.unsqueeze(0))
-        interesting_output = output[output_mask.unsqueeze(0)]
-        loss = loss_agg_fn(input_tensor, interesting_output)
+        loss = loss_agg_fn(model, input_tensor.unsqueeze(0), prototypes_mask.unsqueeze(0))
         if i % print_interval == 0:
             print(f'step: {i}/{optimization_steps}, loss: {loss}')
         if display_interval and i % display_interval == 0:

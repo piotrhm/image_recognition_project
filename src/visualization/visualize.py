@@ -8,13 +8,14 @@ import torchvision
 import torchvision.transforms as tfs
 
 from src.optimization.optimize import optimize_model
-from .utils import prepare_model_for_prototype_optimization, get_output_mask_from_prototypes_list
+from .utils import prepare_model_for_prototype_optimization, get_prototypes_mask_from_prototypes_list
 
+from src.optimization.aggregate import AggregationFn
 
 def visualize_prototypes(model: nn.Module,
                          prototypes_list: List[Tuple[int, int]],
                          input_tensor: torch.tensor,
-                         loss_agg_fn: Callable[[torch.tensor, torch.tensor], torch.tensor] = lambda _, x: -torch.mean(x),
+                         loss_agg_fn: AggregationFn = AggregationFn(),
                          optimizer_cls: Type[torch.optim.Optimizer] = torch.optim.Adam,
                          optimizer_kwargs: Optional[Dict[str, Any]] = None,
                          optimization_steps: int = 20,
@@ -23,6 +24,7 @@ def visualize_prototypes(model: nn.Module,
                          print_interval: int = 100,
                          display_interval: Optional[int] = 500
                          ) -> torch.tensor:
+
     """
     Optimizes a tensor to minimize the given loss.
 
@@ -30,7 +32,8 @@ def visualize_prototypes(model: nn.Module,
         model: model to use
         prototypes_list: prototypes to optimize the activation of. List of pairs (class index, prototype index)
         input_tensor: an initial tensor
-        loss_agg_fn: takes input_tensor and model's masked output, outputs aggregated loss
+        loss_agg_fn: AggregationFn, outputs aggregated loss
+        prototypes_agg_fn: takes loss_agg_fn output for each of prototype, outputs aggregated loss
         optimizer_cls: optimizer class
         optimizer_kwargs: arguments for the optimizer
         optimization_steps: number of steps to optimize for
@@ -42,10 +45,10 @@ def visualize_prototypes(model: nn.Module,
         Optimized tensor
     """
     model = prepare_model_for_prototype_optimization(model)
-    output_mask = get_output_mask_from_prototypes_list(model, prototypes_list)
+    prototypes_mask = get_prototypes_mask_from_prototypes_list(model, prototypes_list)
     optimizer_kwargs = optimizer_kwargs if optimizer_kwargs is not None else {'lr': 0.01}
     optimized_input = optimize_model(model=model,
-                                     output_mask=output_mask,
+                                     prototypes_mask=prototypes_mask,
                                      loss_agg_fn=loss_agg_fn,
                                      input_tensor=input_tensor,
                                      optimizer_cls=optimizer_cls,
