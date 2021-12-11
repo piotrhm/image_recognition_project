@@ -66,7 +66,7 @@ def visualize_prototypes_octaves(model: nn.Module,
                                  input_tensor: torch.tensor,
                                  num_octaves: int = 10,
                                  octave_scale: float = 1.4,
-                                 loss_agg_fn: Callable[[torch.tensor, torch.tensor], torch.tensor] = lambda _, x: -torch.mean(x),
+                                 loss_agg_fn: AggregationFn = AggregationFn(),
                                  optimizer_cls: Type[torch.optim.Optimizer] = torch.optim.Adam,
                                  optimizer_kwargs: Optional[Dict[str, Any]] = None,
                                  optimization_steps: int = 20,
@@ -87,30 +87,28 @@ def visualize_prototypes_octaves(model: nn.Module,
         loss_agg_fn: takes input_tensor and model's masked output, outputs aggregated loss
         optimizer_cls: optimizer class
         optimizer_kwargs: arguments for the optimizer
-        optimization_steps: number of steps to optimize for
+        optimization_steps: number of steps to optimize for per octave
         transforms: list of transformations that get composed and applied to input_tensor before processing by model
         before_optim_step: called after gradients are calculated, but before optimizer step
-        print_interval: prints logs every `print_interval` steps
-        display_interval: displays input_tensor every `display_interval` steps
+        print_interval: prints logs every `print_interval` steps per octave
+        display_interval: displays input_tensor every `display_interval` steps per octave
     Returns:
         Optimized tensor
     """
     input_arr = input_tensor.data.numpy()
-    octaves = [input_arr]
+    input_arr_scaled = [input_arr]
     for _ in range(num_octaves - 1):
-        octaves.append(nd.zoom(octaves[-1], (1, 1 / octave_scale, 1 / octave_scale), order=1))
+        input_arr_scaled.append(nd.zoom(input_arr_scaled[-1], (1, 1 / octave_scale, 1 / octave_scale), order=1))
 
-    optimization_steps /= num_octaves
-
-    detail = np.zeros_like(octaves[-1])
-    for octave, octave_base in enumerate(octaves[::-1]):
+    detail = np.zeros_like(input_arr_scaled[-1])
+    for octave, base in enumerate(input_arr_scaled[::-1]):
         if octave > 0:
-            detail = nd.zoom(detail, np.array(octave_base.shape) / np.array(detail.shape), order=1)
-        image = octave_base + detail
+            detail = nd.zoom(detail, np.array(base.shape) / np.array(detail.shape), order=1)
+        image = base + detail
         input_tensor = torch.from_numpy(image)
         dreamed_image = visualize_prototypes(model, prototypes_list, input_tensor, loss_agg_fn, optimizer_cls,
-                                             optimizer_kwargs, int(optimization_steps), transforms, before_optim_step,
+                                             optimizer_kwargs, optimization_steps, transforms, before_optim_step,
                                              print_interval, display_interval)
-        detail = dreamed_image - octave_base
+        detail = dreamed_image - base
 
     return dreamed_image

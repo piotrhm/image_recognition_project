@@ -5,6 +5,7 @@ import torch.nn as nn
 import torchvision
 import torchvision.transforms.functional as F
 
+
 def optimize_model(model: nn.Module,
                    prototypes_mask: torch.tensor,
                    input_tensor: torch.tensor,
