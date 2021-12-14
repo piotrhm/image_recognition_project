@@ -93,5 +93,9 @@ class BilateralFilter:
         self.sigma_s = self.sigma_s if self.sigma_s.shape[0] == x.shape[1] else self.sigma_s.repeat(x.shape[1]).float().cuda()
         assert self.sigma_v.shape[0] == x.shape[1]
         assert self.sigma_s.shape[0] == x.shape[1]
-        ret = bilateral_cuda.forward(x, self.kernel_size, self.sigma_v, self.sigma_s)[0]
+        self.input = x
+        [ret, self.numerator, self.denominator] = bilateral_cuda.forward(x, self.kernel_size, self.sigma_v, self.sigma_s)
         return ret.squeeze(0) if squeeze else ret
+
+    def backward(self, grad_output: torch.tensor) -> torch.tensor:
+        return bilateral_cuda.backward(grad_output.clone(), self.kernel_size, self.sigma_v, self.sigma_s, self.numerator, self.denominator)
