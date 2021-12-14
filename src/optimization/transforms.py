@@ -1,6 +1,20 @@
+import torch
+import subprocess
+import sys
+
 import torchvision.transforms as tfs
 
 from typing import Tuple, Union
+
+if torch.cuda.is_available():
+    import os
+    print('Installing bilateral-filter...')
+    ret = subprocess.check_output([sys.executable, '-m', 'pip', 'install', 'git+git://github.com/adriansuwala/bilateral-filter.git@main'])
+    print(ret.decode('utf-8'))
+    import bilateral_cuda
+else:
+    print('Cuda not available, bilateral filter not imported')
+
 
 
 class CustomTransforms:
@@ -55,3 +69,20 @@ transforms_base = tfs.Compose([
     tfs.RandomResizedCrop(size=224, scale=(0.99, 1)),
     tfs.ToTensor(),
 ])
+
+class BilateralFilter:
+    def __init__(self, kernel_size: int, sigma_v: Union[torch.tensor, float], sigma_s: Union[torch.tensor, float]):
+        """
+        Parameters:
+            kernel_size: kernel size
+            sigma_v: range sigma (increases blurring), tensor with value for each channel or single value for all
+            sigma_s: spatial sigma, tensor with value for each channel or single value for all
+        """
+        self.sigma_v = sigma_v if isinstance(sigma_v, torch.Tensor) else torch.tensor([sigma_v, sigma_v, sigma_v])
+        self.sigma_s = sigma_s if isinstance(sigma_s, torch.Tensor) else torch.tensor([sigma_s, sigma_s, sigma_s])
+        self.sigma_v = self.sigma_v.float().cuda()
+        self.sigma_s = self.sigma_s.float().cuda()
+        self.kernel_size = kernel_size
+
+    def __call__(self, x: torch.tensor) -> torch.tensor:
+        return bilateral_cuda.forward(x, self.kernel_size, self.sigma_v, self.sigma_s)[0]
