@@ -78,11 +78,20 @@ class BilateralFilter:
             sigma_v: range sigma (increases blurring), tensor with value for each channel or single value for all
             sigma_s: spatial sigma, tensor with value for each channel or single value for all
         """
-        self.sigma_v = sigma_v if isinstance(sigma_v, torch.Tensor) else torch.tensor([sigma_v, sigma_v, sigma_v])
-        self.sigma_s = sigma_s if isinstance(sigma_s, torch.Tensor) else torch.tensor([sigma_s, sigma_s, sigma_s])
+        self.sigma_v = sigma_v if isinstance(sigma_v, torch.Tensor) else torch.tensor([sigma_v])
+        self.sigma_s = sigma_s if isinstance(sigma_s, torch.Tensor) else torch.tensor([sigma_s])
         self.sigma_v = self.sigma_v.float().cuda()
         self.sigma_s = self.sigma_s.float().cuda()
         self.kernel_size = kernel_size
 
     def __call__(self, x: torch.tensor) -> torch.tensor:
-        return bilateral_cuda.forward(x, self.kernel_size, self.sigma_v, self.sigma_s)[0]
+        squeeze = False
+        if len(x.shape) == 3:
+            x = x.unsqueeze(0)
+            squeeze = True
+        self.sigma_v = self.sigma_v if self.sigma_v.shape[0] == x.shape[1] else self.sigma_v.repeat(x.shape[1]).float().cuda()
+        self.sigma_s = self.sigma_s if self.sigma_s.shape[0] == x.shape[1] else self.sigma_s.repeat(x.shape[1]).float().cuda()
+        assert self.sigma_v.shape[0] == x.shape[1]
+        assert self.sigma_s.shape[0] == x.shape[1]
+        ret = bilateral_cuda.forward(x, self.kernel_size, self.sigma_v, self.sigma_s)[0]
+        return ret.squeeze(0) if squeeze else ret
