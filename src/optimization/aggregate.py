@@ -8,7 +8,7 @@ class AggregationFn:
         agg_fn: str = "mean",
         ptype_lvl_agg_fn: str = "mean",
         exponent: float = 1.0,
-        patches_mask: torch.tensor = torch.ones(7, 7, dtype=bool),
+        patches_mask: torch.tensor = True,
     ):
 
         """

@@ -2,7 +2,8 @@ from typing import List, Tuple
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+import torchvision.transforms as tfs
+import numpy as np
 
 
 def get_prototypes_mask_from_prototypes_list(model: nn.Module, prototypes_list: List[Tuple[int, int]]) -> torch.tensor:
@@ -42,3 +43,4 @@ def prepare_model_for_prototype_optimization(model: nn.Module) -> nn.Module:
         f.requires_grad = False
     model.forward = _compute_similarity
     return model
+
