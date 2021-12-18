@@ -98,4 +98,4 @@ class BilateralFilter:
         return ret.squeeze(0) if squeeze else ret
 
     def backward(self, grad_output: torch.tensor) -> torch.tensor:
-        return bilateral_cuda.backward(grad_output.clone(), self.kernel_size, self.sigma_v, self.sigma_s, self.numerator, self.denominator)
+        return bilateral_cuda.backward(grad_output.clone(), self.input, self.kernel_size, self.sigma_v, self.sigma_s, self.numerator, self.denominator)
