@@ -1,4 +1,5 @@
 import torch
+from typing import Union
 
 
 class AggregationFn:
@@ -8,7 +9,7 @@ class AggregationFn:
         agg_fn: str = "mean",
         ptype_lvl_agg_fn: str = "mean",
         exponent: float = 1.0,
-        patches_mask: torch.tensor = True,
+        patches_mask: Union[torch.tensor, bool] = True,
     ):
 
         """
@@ -47,7 +48,8 @@ class AggregationFn:
 
     def to(self, device):
         """Moves object to device"""
-        self.patches_mask = self.patches_mask.to(device)
+        if type(self.patches_mask) is not bool:
+            self.patches_mask = self.patches_mask.to(device)
         return self
 
     def __call__(self, model, x, prototypes_mask):
