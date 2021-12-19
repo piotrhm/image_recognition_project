@@ -2,10 +2,11 @@ from typing import List, Tuple
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+import torchvision.transforms as tfs
+import numpy as np
 
 
-def get_output_mask_from_prototypes_list(model: nn.Module, prototypes_list: List[Tuple[int, int]]) -> torch.tensor:
+def get_prototypes_mask_from_prototypes_list(model: nn.Module, prototypes_list: List[Tuple[int, int]]) -> torch.tensor:
     """Takes prototypes as a list of pairs (class index, prototype index)
     and returns a boolean tensor that masks out everything else."""
     proto_per_class = model.num_prototypes // model.num_classes
@@ -42,3 +43,4 @@ def prepare_model_for_prototype_optimization(model: nn.Module) -> nn.Module:
         f.requires_grad = False
     model.forward = _compute_similarity
     return model
+
