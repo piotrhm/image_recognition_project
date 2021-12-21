@@ -55,6 +55,7 @@ def optimize_model(model: nn.Module,
             transformations
         print_interval: prints logs every `print_interval` steps
         display_interval: displays optimized image every `display_interval` steps
+        return_optimized_input: whether to additionally return optimized input.
     Returns:
         Optimized image and optimized input (optionally).
     """
