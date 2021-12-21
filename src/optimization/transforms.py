@@ -52,6 +52,7 @@ class ReversibleCompose(ReversibleTransform):
 class ReversibleRandomTransforms(ReversibleTransform):
     """
     Random transform that can be reversed. It stores its random parameters and uses them to reverse the transformation.
+    Only the last transformation call can be reversed (and can be reversed only once).
     """
 
     def __init__(self, p: float):
