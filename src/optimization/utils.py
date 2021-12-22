@@ -118,4 +118,4 @@ class DenormalizationMeanStd:
         """
         Normalizes tensor image with mean and standard deviation.
         """
-        return (t * self.std) + self.mean
+        return (t * self.std.to(t.device)) + self.mean.to(t.device)

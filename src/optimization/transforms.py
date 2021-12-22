@@ -1,3 +1,4 @@
+import logging
 import numbers
 import random
 from abc import abstractmethod, ABC
@@ -8,15 +9,20 @@ import torch
 import torchvision.transforms as tfs
 from torch import Tensor
 
+if torch.cuda.is_available():
+    try:
+        import bilateral_cuda
+    except ImportError:
+        import subprocess
+        import sys
 
-# if torch.cuda.is_available():
-#     print('Installing bilateral-filter...')
-#     ret = subprocess.check_output(
-#         [sys.executable, '-m', 'pip', 'install', 'git+git://github.com/adriansuwala/bilateral-filter.git@main'])
-#     print(ret.decode('utf-8'))
-#     import bilateral_cuda
-# else:
-#     print('Cuda not available, bilateral filter not imported')
+        logging.info('Installing bilateral-filter...')
+        ret = subprocess.check_output(
+            [sys.executable, '-m', 'pip', 'install', 'git+git://github.com/adriansuwala/bilateral-filter.git@main'])
+        logging.info(ret.decode('utf-8'))
+    import bilateral_cuda
+else:
+    logging.warning('Cuda not available, bilateral filter not imported')
 
 
 class ReversibleTransform(ABC):
