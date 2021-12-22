@@ -1,7 +1,7 @@
-import torch
 import numpy as np
+import torch
 import torchvision.transforms as tfs
-from typing import List, Callable
+from torch import Tensor
 
 
 class ClampingMinMax:
@@ -18,12 +18,11 @@ class ClampingMinMax:
         self.min = min
         self.max = max
 
-    def __call__(self, t):
+    def __call__(self, t: Tensor):
         """
         Clamps all elements in input into the range [min, max].
         """
-        t.data = torch.clamp(t.data, self.min, self.max)
-        return t
+        return torch.clamp(t, self.min, self.max)
 
 
 class ClampingMeanStd:
@@ -42,16 +41,15 @@ class ClampingMeanStd:
         self.mean = mean
         self.std = std
 
-    def __call__(self, t):
+    def __call__(self, t: Tensor) -> Tensor:
         """
         Clamps all elements in input into the range [-mean/std, mean/std].
         """
-        t_clamped = torch.zeros(t.shape)
+        t_clamped = torch.zeros(t.shape).to(t.device)
         for c in range(3):
             m, s = self.mean[c], self.std[c]
             t_clamped[c, :, :] = torch.clamp(t[c, :, :], -m / s, (1 - m) / s)
-        t.data = t_clamped.data
-        return t
+        return t_clamped
 
 
 class NormalizationMinMax:
@@ -68,15 +66,14 @@ class NormalizationMinMax:
         self.min = min
         self.max = max
 
-    def __call__(self, t):
+    def __call__(self, t: Tensor) -> Tensor:
         """
         Normalizes all elements in input into the range [min, max].
         """
         t_min = torch.min(t)
         t_max = torch.max(t)
         t_norm = (self.max - self.min) * (t - t_min) / (t_max - t_min) + self.min
-        t.data = t_norm.data
-        return t
+        return t_norm
 
 
 class NormalizationMeanStd:
@@ -92,33 +89,33 @@ class NormalizationMeanStd:
             mean: mean used for normalization
             std: standard deviation used for normalization
         """
-        self.mean = mean
-        self.std = std
+        self.transform = tfs.Normalize(mean, std)
 
-    def __call__(self, t):
+    def __call__(self, t: Tensor) -> Tensor:
         """
         Normalizes tensor image with mean and standard deviation.
         """
-        t.data = tfs.Normalize(self.mean, self.std)(t).data
-        return t
+        return self.transform(t)
 
 
-class BeforeOptimFn:
+class DenormalizationMeanStd:
     """
-    A class used to define a sequence of transformations on the input.
+    A class used to define denormalization with mean and std.
     """
 
-    def __init__(self, methods: List[Callable]):
+    def __init__(self,
+                 mean: np.array = np.array([0.485, 0.456, 0.406]),
+                 std: np.array = np.array([0.229, 0.224, 0.225])):
         """
         Parameters:
-            methods: list of transformations
+            mean: mean used for normalization
+            std: standard deviation used for normalization
         """
-        self.methods = methods
+        self.mean = torch.tensor(mean).float().view(-1, 1, 1)
+        self.std = torch.tensor(std).float().view(-1, 1, 1)
 
-    def __call__(self, t):
+    def __call__(self, t: Tensor) -> Tensor:
         """
-        Applies all transformations to the input.
+        Normalizes tensor image with mean and standard deviation.
         """
-        for m in self.methods:
-            t.data = m(t).data
-        return t
+        return (t * self.std.to(t.device)) + self.mean.to(t.device)

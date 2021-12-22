@@ -1,27 +1,31 @@
-from typing import List, Tuple, Callable, Type, Dict, Any, Optional
+from typing import List, Tuple, Type, Dict, Any, Optional, Union
 
 import numpy as np
 import scipy.ndimage as nd
 import torch
 import torch.nn as nn
-import torchvision
-import torchvision.transforms as tfs
+from torch.optim import Optimizer
 
 from src.optimization.aggregate import AggregationFn
 from src.optimization.optimize import optimize_model
 from .utils import prepare_model_for_prototype_optimization, get_prototypes_mask_from_prototypes_list
+from ..optimization import ReversibleTransform, Transform, DenormalizationMeanStd
 
 
 def visualize_prototypes(model: nn.Module,
                          prototypes_list: List[Tuple[int, int]],
                          input_tensor: torch.tensor,
                          loss_agg_fn: AggregationFn = AggregationFn(),
-                         optimizer_cls: Type[torch.optim.Optimizer] = torch.optim.Adam,
+                         optimizer_cls: Type[Optimizer] = torch.optim.Adam,
                          optimizer_kwargs: Optional[Dict[str, Any]] = None,
                          optimization_steps: int = 20,
-                         transforms: torchvision.transforms = tfs.Compose([]),
-                         before_optim_step: Callable[[torch.tensor], None] = None,
-                         print_interval: int = 100,
+                         transforms: Optional[List[Transform]] = None,
+                         robustness_transforms: Optional[List[Union[ReversibleTransform, Transform]]] = None,
+                         parametrization_transforms: Optional[List[Transform]] = None,
+                         gradient_transforms: Optional[List[Transform]] = None,
+                         denormalization_transforms: Optional[List[Transform]] = (DenormalizationMeanStd(),),
+                         reverse_reversible_robustness_transforms: bool = True,
+                         print_interval: Optional[int] = 100,
                          display_interval: Optional[int] = 500
                          ) -> torch.tensor:
     """
@@ -32,12 +36,24 @@ def visualize_prototypes(model: nn.Module,
         prototypes_list: prototypes to optimize the activation of. List of pairs (class index, prototype index)
         input_tensor: an initial tensor
         loss_agg_fn: AggregationFn, outputs aggregated loss
-        prototypes_agg_fn: takes loss_agg_fn output for each of prototype, outputs aggregated loss
         optimizer_cls: optimizer class
         optimizer_kwargs: arguments for the optimizer
         optimization_steps: number of steps to optimize for
         transforms: list of transformations that get composed and applied to input_tensor before processing by model
-        before_optim_step: called after gradients are calculated, but before optimizer step
+                transforms: list of transformations that are applied to the input before applying robustness
+            transformations. The transformations are applied as in-place operations.
+        robustness_transforms: list of transformations that are applied to the input and may be reversed
+            at the end of the epoch. The transformations are applied as in-place operations.
+        parametrization_transforms: list of differentiable transformations that are applied to the (possibly previously
+            transformed) input. Applying these transformations should end up with a tensor that can be fed to the model:
+            it must have appropriate size and should be a vector from standardized (normalized) ImageNet distribution.
+            The transformations are applied as gradient-flow operations.
+        gradient_transforms: list of transformations that are applied to the input gradient after the gradient
+            backpropagation, but before the optimizer update. The transformations are applied as in-place operations.
+        denormalization_transforms: list of transformations that are applied to the parametrized input to obtain
+            an image with all pixel values in [0, 1]. It should always be set to [``DenormalizationMeanStd()``].
+        reverse_reversible_robustness_transforms: whether to reverse all reversible transformations used as robustness
+            transformations
         print_interval: prints logs every `print_interval` steps
         display_interval: displays input_tensor every `display_interval` steps
     Returns:
@@ -54,7 +70,11 @@ def visualize_prototypes(model: nn.Module,
                                      optimizer_kwargs=optimizer_kwargs,
                                      optimization_steps=optimization_steps,
                                      transforms=transforms,
-                                     before_optim_step=before_optim_step,
+                                     robustness_transforms=robustness_transforms,
+                                     parametrization_transforms=parametrization_transforms,
+                                     gradient_transforms=gradient_transforms,
+                                     denormalization_transforms=denormalization_transforms,
+                                     reverse_reversible_robustness_transforms=reverse_reversible_robustness_transforms,
                                      print_interval=print_interval,
                                      display_interval=display_interval)
     return optimized_input
@@ -69,8 +89,12 @@ def visualize_prototypes_octaves(model: nn.Module,
                                  optimizer_cls: Type[torch.optim.Optimizer] = torch.optim.Adam,
                                  optimizer_kwargs: Optional[Dict[str, Any]] = None,
                                  optimization_steps: int = 20,
-                                 transforms: torchvision.transforms = tfs.Compose([]),
-                                 before_optim_step: Callable[[torch.tensor], None] = None,
+                                 transforms: Optional[List[Transform]] = None,
+                                 robustness_transforms: Optional[List[Union[ReversibleTransform, Transform]]] = None,
+                                 parametrization_transforms: Optional[List[Transform]] = None,
+                                 gradient_transforms: Optional[List[Transform]] = None,
+                                 denormalization_transforms: Optional[List[Transform]] = (DenormalizationMeanStd(),),
+                                 reverse_reversible_robustness_transforms: bool = True,
                                  print_interval: int = 100,
                                  display_interval: Optional[int] = 500
                                  ) -> torch.tensor:
@@ -88,12 +112,29 @@ def visualize_prototypes_octaves(model: nn.Module,
         optimizer_kwargs: arguments for the optimizer
         optimization_steps: number of steps to optimize for per octave
         transforms: list of transformations that get composed and applied to input_tensor before processing by model
-        before_optim_step: called after gradients are calculated, but before optimizer step
+                transforms: list of transformations that are applied to the input before applying robustness
+            transformations. The transformations are applied as in-place operations.
+        robustness_transforms: list of transformations that are applied to the input and may be reversed
+            at the end of the epoch. The transformations are applied as in-place operations.
+        parametrization_transforms: list of differentiable transformations that are applied to the (possibly previously
+            transformed) input. Applying these transformations should end up with a tensor that can be fed to the model:
+            it must have appropriate size and should be a vector from standardized (normalized) ImageNet distribution.
+            The transformations are applied as gradient-flow operations.
+        gradient_transforms: list of transformations that are applied to the input gradient after the gradient
+            backpropagation, but before the optimizer update. The transformations are applied as in-place operations.
+        denormalization_transforms: list of transformations that are applied to the parametrized input to obtain
+            an image with all pixel values in [0, 1]. It should always be set to [``DenormalizationMeanStd()``].
+        reverse_reversible_robustness_transforms: whether to reverse all reversible transformations used as robustness
+            transformations
         print_interval: prints logs every `print_interval` steps per octave
         display_interval: displays input_tensor every `display_interval` steps per octave
     Returns:
         Optimized tensor
     """
+    model = prepare_model_for_prototype_optimization(model)
+    prototypes_mask = get_prototypes_mask_from_prototypes_list(model, prototypes_list)
+    optimizer_kwargs = optimizer_kwargs if optimizer_kwargs is not None else {'lr': 0.01}
+
     input_arr = input_tensor.data.numpy()
     input_arr_scaled = [input_arr]
     for _ in range(num_octaves - 1):
@@ -105,9 +146,23 @@ def visualize_prototypes_octaves(model: nn.Module,
             detail = nd.zoom(detail, np.array(base.shape) / np.array(detail.shape), order=1)
         image = base + detail
         input_tensor = torch.from_numpy(image)
-        dreamed_image = visualize_prototypes(model, prototypes_list, input_tensor, loss_agg_fn, optimizer_cls,
-                                             optimizer_kwargs, optimization_steps, transforms, before_optim_step,
-                                             print_interval, display_interval)
-        detail = dreamed_image - base
+        optimized_image, optimized_input = optimize_model(model=model,
+                                                          prototypes_mask=prototypes_mask,
+                                                          loss_agg_fn=loss_agg_fn,
+                                                          input_tensor=input_tensor,
+                                                          optimizer_cls=optimizer_cls,
+                                                          optimizer_kwargs=optimizer_kwargs,
+                                                          optimization_steps=optimization_steps,
+                                                          transforms=transforms,
+                                                          robustness_transforms=robustness_transforms,
+                                                          parametrization_transforms=parametrization_transforms,
+                                                          gradient_transforms=gradient_transforms,
+                                                          denormalization_transforms=denormalization_transforms,
+                                                          reverse_reversible_robustness_transforms=
+                                                          reverse_reversible_robustness_transforms,
+                                                          print_interval=print_interval,
+                                                          display_interval=display_interval,
+                                                          return_optimized_input=True)
+        detail = optimized_input - base
 
-    return dreamed_image
+    return optimized_image
