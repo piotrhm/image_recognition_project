@@ -5,6 +5,7 @@ import torch.nn as nn
 import torchvision.transforms.functional as F
 from torch import Tensor
 from torch.optim import Optimizer
+from torch.optim.lr_scheduler import _LRScheduler, SequentialLR
 from torchvision.transforms import Compose
 
 from src.optimization import AggregationFn
@@ -18,6 +19,9 @@ def optimize_model(model: nn.Module,
                    optimizer_cls: Type[Optimizer],
                    optimizer_kwargs: Dict[str, Any],
                    optimization_steps: int,
+                   lr_scheduler_cls: _LRScheduler,
+                   lr_scheduler_kwargs: Dict[str, Any],
+                   lr_scheduler_step_interval: int,
                    transforms: Optional[List[Transform]],
                    robustness_transforms: Optional[List[Union[ReversibleTransform, Transform]]],
                    parametrization_transforms: Optional[List[Transform]],
@@ -39,6 +43,9 @@ def optimize_model(model: nn.Module,
         optimizer_cls: optimizer class
         optimizer_kwargs: arguments for the optimizer
         optimization_steps: number of steps to optimize for
+        lr_scheduler_cls: lr scheduler class
+        lr_scheduler_kwargs: arguments for the lr scheduler
+        lr_scheduler_step_interval: make lr scheduler step every `lr_scheduler_step_interval` steps
         transforms: list of transformations that are applied to the input before applying robustness
             transformations. The transformations are applied as in-place operations.
         robustness_transforms: list of transformations that are applied to the input and may be reversed
@@ -81,6 +88,8 @@ def optimize_model(model: nn.Module,
     input_tensor = input_tensor.to(next(model.parameters()).device)
     input_tensor.requires_grad_()
     optimizer = optimizer_cls(params=[input_tensor], **optimizer_kwargs)
+    if lr_scheduler_cls is not None:
+        lr_scheduler = lr_scheduler_cls(optimizer, **lr_scheduler_kwargs)
     for i in range(optimization_steps):
         optimizer.zero_grad()
         input_tensor.data = transform_fn(input_tensor.data)
@@ -94,10 +103,16 @@ def optimize_model(model: nn.Module,
             input_tensor.data = robustness_transform_fn.reverse_transform(input_tensor.data)
 
         if print_interval and i % print_interval == 0:
-            print(f'step: {i}/{optimization_steps}, loss: {loss}')
+            if lr_scheduler_cls is not None:
+                print(f'step: {i}/{optimization_steps}, loss: {loss}, lr: {lr_scheduler.get_lr()[0]}')
+            else:
+                print(f'step: {i}/{optimization_steps}, loss: {loss}')
+
         if display_interval and i % display_interval == 0:
             output_image = _transform_to_image(input_tensor)
             display(F.to_pil_image(output_image))
+        if lr_scheduler_cls is not None and i % lr_scheduler_step_interval == 0:
+            lr_scheduler.step()
 
     image = _transform_to_image(input_tensor)
     if return_optimized_input:

@@ -5,6 +5,7 @@ import scipy.ndimage as nd
 import torch
 import torch.nn as nn
 from torch.optim import Optimizer
+from torch.optim.lr_scheduler import _LRScheduler
 
 from src.optimization.aggregate import AggregationFn
 from src.optimization.optimize import optimize_model
@@ -19,6 +20,9 @@ def visualize_prototypes(model: nn.Module,
                          optimizer_cls: Type[Optimizer] = torch.optim.Adam,
                          optimizer_kwargs: Optional[Dict[str, Any]] = None,
                          optimization_steps: int = 20,
+                         lr_scheduler_cls: Optional[_LRScheduler] = None,
+                         lr_scheduler_kwargs: Optional[Dict[str, Any]] = None,
+                         lr_scheduler_step_interval: int = 1,
                          transforms: Optional[List[Transform]] = None,
                          robustness_transforms: Optional[List[Union[ReversibleTransform, Transform]]] = None,
                          parametrization_transforms: Optional[List[Transform]] = None,
@@ -39,6 +43,9 @@ def visualize_prototypes(model: nn.Module,
         optimizer_cls: optimizer class
         optimizer_kwargs: arguments for the optimizer
         optimization_steps: number of steps to optimize for
+        lr_scheduler_cls: lr scheduler class
+        lr_scheduler_kwargs: arguments for the lr scheduler
+        lr_scheduler_step_interval: make lr scheduler step every `lr_scheduler_step_interval` steps
         transforms: list of transformations that get composed and applied to input_tensor before processing by model
                 transforms: list of transformations that are applied to the input before applying robustness
             transformations. The transformations are applied as in-place operations.
@@ -69,6 +76,9 @@ def visualize_prototypes(model: nn.Module,
                                      optimizer_cls=optimizer_cls,
                                      optimizer_kwargs=optimizer_kwargs,
                                      optimization_steps=optimization_steps,
+                                     lr_scheduler_cls=lr_scheduler_cls,
+                                     lr_scheduler_kwargs=lr_scheduler_kwargs,
+                                     lr_scheduler_step_interval=lr_scheduler_step_interval,
                                      transforms=transforms,
                                      robustness_transforms=robustness_transforms,
                                      parametrization_transforms=parametrization_transforms,
@@ -89,6 +99,9 @@ def visualize_prototypes_octaves(model: nn.Module,
                                  optimizer_cls: Type[torch.optim.Optimizer] = torch.optim.Adam,
                                  optimizer_kwargs: Optional[Dict[str, Any]] = None,
                                  optimization_steps: int = 20,
+                                 lr_scheduler_cls: Optional[Union[_LRScheduler, List[_LRScheduler]]] = None,
+                                 lr_scheduler_kwargs: Optional[Union[Dict[str, Any],List[Dict[str, Any]]]] = None,
+                                 lr_scheduler_step_interval: int = 1,
                                  transforms: Optional[List[Transform]] = None,
                                  robustness_transforms: Optional[List[Union[ReversibleTransform, Transform]]] = None,
                                  parametrization_transforms: Optional[List[Transform]] = None,
@@ -111,6 +124,9 @@ def visualize_prototypes_octaves(model: nn.Module,
         optimizer_cls: optimizer class
         optimizer_kwargs: arguments for the optimizer
         optimization_steps: number of steps to optimize for per octave
+        lr_scheduler_cls: lr scheduler class list of classes for SequentialLR
+        lr_scheduler_kwargs: arguments for the lr scheduler or list of kwargs for SequentialLR
+        lr_scheduler_step_interval: make lr scheduler step every `lr_scheduler_step_interval` steps
         transforms: list of transformations that get composed and applied to input_tensor before processing by model
                 transforms: list of transformations that are applied to the input before applying robustness
             transformations. The transformations are applied as in-place operations.
@@ -153,6 +169,9 @@ def visualize_prototypes_octaves(model: nn.Module,
                                                           optimizer_cls=optimizer_cls,
                                                           optimizer_kwargs=optimizer_kwargs,
                                                           optimization_steps=optimization_steps,
+                                                          lr_scheduler_cls=lr_scheduler_cls,
+                                                          lr_scheduler_kwargs=lr_scheduler_kwargs,
+                                                          lr_scheduler_step_interval=lr_scheduler_step_interval,
                                                           transforms=transforms,
                                                           robustness_transforms=robustness_transforms,
                                                           parametrization_transforms=parametrization_transforms,
