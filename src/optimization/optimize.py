@@ -104,7 +104,7 @@ def optimize_model(model: nn.Module,
 
         if print_interval and i % print_interval == 0:
             if lr_scheduler_cls is not None:
-                print(f'step: {i}/{optimization_steps}, loss: {loss}, lr: {lr_scheduler.get_lr()[0]}')
+                print(f'step: {i}/{optimization_steps}, loss: {loss}, lr: {lr_scheduler.get_last_lr()[0]}')
             else:
                 print(f'step: {i}/{optimization_steps}, loss: {loss}')
 
