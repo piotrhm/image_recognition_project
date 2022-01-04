@@ -9,6 +9,7 @@ from torchvision.ops import masks_to_boxes
 from torchvision.utils import draw_bounding_boxes
 import os
 from pathlib import Path
+import cv2
 
 
 def crop(img_name: str) -> PIL.Image.Image:
@@ -101,7 +102,7 @@ def visualize_real_prototype(model: nn.Module, img_name: str, class_number: int,
     proto_per_class = model.num_prototypes // model.num_classes
     input = activations[0][class_number * proto_per_class + prototype_number].unsqueeze(0).unsqueeze(0)
 
-    m = nn.Upsample(size=(img_size, img_size), mode='nearest')
+    m = nn.Upsample(size=(img_size, img_size), mode='bicubic')
     output = m(input)
 
     q = torch.quantile(output, 0.95)
@@ -111,5 +112,54 @@ def visualize_real_prototype(model: nn.Module, img_name: str, class_number: int,
     input_tensor = input_tensor.to(torch.uint8)
     drawn_boxes = draw_bounding_boxes(input_tensor.squeeze(0), boxes, colors="yellow")
     pilimg = tfs.ToPILImage()(drawn_boxes)
+
+    return pilimg
+
+
+def heatmap(model: nn.Module, input_img: PIL.Image.Image, class_number: int, prototype_number: int, superimpose=False) \
+        -> PIL.Image.Image:
+    """
+    Plots heatmap or heatmap over the original image.
+
+    Parameters:
+        model: model to use
+        input_img: original image
+        class_number: number of the image class
+        prototype_number: number of the prototype to visualize (0 to 9)
+        superimpose: False to plot only heatmap, True to plot heatmap over input image
+
+    Returns:
+        heatmap
+    """
+
+    device = next(model.parameters()).device
+    img_size = 224
+    transform = tfs.Compose([tfs.Resize(size=(img_size, img_size)), tfs.ToTensor()])
+
+    input_tensor = transform(input_img)
+    input_tensor = input_tensor.unsqueeze(0)
+    with torch.no_grad():
+        distances = model.prototype_distances(input_tensor.to(device))
+        activations = model.distance_2_similarity(distances).cpu()
+    proto_per_class = model.num_prototypes // model.num_classes
+    input = activations[0][class_number * proto_per_class + prototype_number].unsqueeze(0).unsqueeze(0)
+
+    m = nn.Upsample(size=(img_size, img_size), mode='bicubic')
+    output = m(input)
+
+    output = output.squeeze(0).squeeze(0).cpu().detach().numpy()
+    rescaled_output = output - np.amin(output)
+    rescaled_act_pattern = rescaled_output / np.amax(rescaled_output)
+    heatmap = cv2.applyColorMap(np.uint8(255 * rescaled_act_pattern), cv2.COLORMAP_JET)
+    heatmap = np.float32(heatmap) / 255
+    heatmap = heatmap[..., ::-1]
+
+    if superimpose:
+        original_image = input_tensor.squeeze(0).cpu().detach().numpy()
+        original_image = original_image.transpose(1, 2, 0)
+        heatmap_over_original = 0.3 * heatmap + 0.7 * original_image
+        pilimg = tfs.ToPILImage()(np.uint8(heatmap_over_original * 255))
+    else:
+        pilimg = tfs.ToPILImage()(np.uint8(heatmap * 255))
 
     return pilimg
