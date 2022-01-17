@@ -4,6 +4,7 @@ import numpy as np
 import scipy.ndimage as nd
 import torch
 import torch.nn as nn
+from torch import Tensor
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import _LRScheduler
 
@@ -18,6 +19,7 @@ def visualize_prototypes(model: nn.Module,
                          input_tensor: torch.tensor,
                          loss_agg_fn: AggregationFn = AggregationFn(),
                          optimizer_cls: Type[Optimizer] = torch.optim.Adam,
+                         optimizer_parameters: Tensor = None,
                          optimizer_kwargs: Optional[Dict[str, Any]] = None,
                          optimization_steps: int = 20,
                          lr_scheduler_cls: Optional[_LRScheduler] = None,
@@ -31,7 +33,7 @@ def visualize_prototypes(model: nn.Module,
                          reverse_reversible_robustness_transforms: bool = True,
                          print_interval: Optional[int] = 100,
                          display_interval: Optional[int] = 500
-                         ) -> torch.tensor:
+                         ) -> Tensor:
     """
     Optimizes a tensor to minimize the given loss.
 
@@ -41,6 +43,7 @@ def visualize_prototypes(model: nn.Module,
         input_tensor: an initial tensor
         loss_agg_fn: AggregationFn, outputs aggregated loss
         optimizer_cls: optimizer class
+        optimizer_parameters: what to optimize
         optimizer_kwargs: arguments for the optimizer
         optimization_steps: number of steps to optimize for
         lr_scheduler_cls: lr scheduler class
@@ -68,12 +71,14 @@ def visualize_prototypes(model: nn.Module,
     """
     model = prepare_model_for_prototype_optimization(model)
     prototypes_mask = get_prototypes_mask_from_prototypes_list(model, prototypes_list)
+    optimizer_parameters = input_tensor if optimizer_parameters is None else optimizer_parameters
     optimizer_kwargs = optimizer_kwargs if optimizer_kwargs is not None else {'lr': 0.01}
     optimized_input = optimize_model(model=model,
                                      prototypes_mask=prototypes_mask,
                                      loss_agg_fn=loss_agg_fn,
                                      input_tensor=input_tensor,
                                      optimizer_cls=optimizer_cls,
+                                     optimizer_parameters=optimizer_parameters,
                                      optimizer_kwargs=optimizer_kwargs,
                                      optimization_steps=optimization_steps,
                                      lr_scheduler_cls=lr_scheduler_cls,
