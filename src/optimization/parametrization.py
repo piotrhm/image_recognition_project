@@ -1,40 +1,12 @@
-from typing import Callable, Optional
+from typing import Callable, Optional, Tuple
 
 import torch
 import math
+import numpy as np
 from torch import nn, Tensor
 
-
-# These activations and implementation of CPPN are adapted from
-# colab link in https://distill.pub/2018/differentiable-parameterizations/
-
-
-def composite_activation(x):
-    x = torch.atan(x)
-    # Coefficients computed by:
-    #   def rms(x):
-    #     return np.sqrt((x*x).mean())
-    #   a = np.arctan(np.random.normal(0.0, 1.0, 10**6))
-    #   print(rms(a), rms(a*a))
-    return torch.concat([x/0.67, (x*x)/0.6], -1)
-
-
-def composite_activation_unbiased(x):
-    x = torch.atan(x)
-    # Coefficients computed by:
-    #   a = np.arctan(np.random.normal(0.0, 1.0, 10**6))
-    #   aa = a*a
-    #   print(a.std(), aa.mean(), aa.std())
-    return torch.concat([x/0.67, (x*x-0.45)/0.396], -1)
-
-
-def relu_normalized(x):
-    x = nn.ReLU()(x)
-    # Coefficients computed by:
-    #   a = np.random.normal(0.0, 1.0, 10**6)
-    #   a = np.maximum(a, 0.0)
-    #   print(a.mean(), a.std())
-    return (x-0.40)/0.58
+from src.optimization.decorrelation import _rfft2d_freqs, _linear_decorelate_color, \
+        IMAGENET_COLOR_CORRELATION_SVD_SQRT, IMAGENET_COLOR_MEAN, _to_valid_rgb
 
 
 def fourier_map(fourier_features, coords):
@@ -44,6 +16,8 @@ def fourier_map(fourier_features, coords):
 
 
 class Lambda(nn.Module):
+    """For using a standalone function as an activation function in nn.Sequential."""
+
     def __init__(self, f):
         super().__init__()
         self.f = f
@@ -57,6 +31,8 @@ class ImageCPPN(nn.Module):
     Implementation of Compositional Pattern Producing Networks.
     Takes pixel coordinates and outputs rgb values.
     Can use fourier features to first embed coordinates.
+    Implementation of CPPN are adapted from colab link in
+    https://distill.pub/2018/differentiable-parameterizations/
     """
 
     def __init__(self, width: int,
@@ -64,7 +40,7 @@ class ImageCPPN(nn.Module):
                  num_output_channels: int = 3,
                  num_hidden_channels: int = 24,
                  num_layers: int = 8,
-                 activation_fn: Callable = Lambda(relu_normalized),
+                 activation_fn: Callable = nn.ReLU(),
                  normalize: bool = False,
                  embedding_size: int = 256,
                  scale: int = 10,
@@ -115,6 +91,7 @@ class ImageCPPN(nn.Module):
         final = nn.Conv2d(num_hidden_channels, num_output_channels, 1)
         with torch.no_grad():
             final.weight.zero_()
+            final.bias.zero_()
         layers.append(final)
         layers.append(nn.Sigmoid())
 
@@ -138,4 +115,53 @@ class ImageCPPN(nn.Module):
         return self.model(grid)
 
 
-# TODO: FFT generator
+class FFTGenerator(nn.Module):
+    """Parametrization using fourier space. Adapted from lucid."""
+
+    def __init__(self, shape: Tuple[int, int, int, int] = (1, 3, 224, 224),
+                 std: float = 0.01, decay_power: float = 1.0,
+                 sigmoid: bool = False,
+                 decorrelate: bool = True,
+                 color_correlation_svd_sqrt: np.array = IMAGENET_COLOR_CORRELATION_SVD_SQRT,
+                 color_mean: np.array = IMAGENET_COLOR_MEAN):
+        self.shape = shape
+        self.decay_power = decay_power
+        self.std = std
+        self.sigmoid = sigmoid
+        self.decorrelate = decorrelate
+        self.color_correlation_svd_sqrt = color_correlation_svd_sqrt
+        self.color_mean = color_mean
+
+        batch_size, channels, width, height = self.shape  # flipped to pytorch convention
+        self.freqs = _rfft2d_freqs(height, width)
+        init_value_size = (2, batch_size, channels) + self.freqs.shape
+        spectrum_real_tensor = std * torch.randn(init_value_size)
+        self.spectrum_tensor = torch.complex(spectrum_real_tensor[0], spectrum_real_tensor[1])
+        self.spectrum_tensor.requires_grad = True
+
+    def to(self, device):
+        with torch.no_grad():
+            self.spectrum_tensor.data = self.spectrum_tensor.to(device)
+        return self
+
+    def get_image(self) -> torch.tensor:
+        batch_size, channels, width, height = self.shape  # flipped to pytorch convention
+
+        scale = 1.0 / np.maximum(self.freqs, 1.0 / max(width, height)) ** self.decay_power
+        scale *= np.sqrt(width * height)
+        scale = torch.tensor(scale).float().to(self.spectrum_tensor.device)
+        scaled_spectrum_t = scale.view(1, scale.shape[-2], scale.shape[-1]) * self.spectrum_tensor
+
+        image_tensor = torch.fft.irfft2(scaled_spectrum_t)
+
+        # in case of odd spatial input dimensions we need to crop
+        image_tensor = image_tensor[:batch_size, :channels, :height, :width]
+        image_tensor = image_tensor / 4.0  # some magic number
+        return image_tensor
+
+    def __call__(self) -> Tensor:
+        image = self.get_image()
+        image = _to_valid_rgb(image, sigmoid=self.sigmoid, decorrelate=self.decorrelate,
+                              color_correlation_svd_sqrt=self.color_correlation_svd_sqrt,
+                              color_mean=self.color_mean)
+        return image
