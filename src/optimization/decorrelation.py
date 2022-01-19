@@ -98,7 +98,7 @@ def _to_valid_rgb(x: Tensor, *,
     if decorrelate:
         x = _linear_decorelate_color(x, color_correlation_svd_sqrt)
     if decorrelate and not sigmoid:
-        x += torch.tensor(color_mean).float()
+        x += torch.tensor(color_mean, dtype=torch.float32, device=x.device).view(3, 1, 1)
     if sigmoid:
         return torch.sigmoid(x)
     else:
@@ -108,7 +108,7 @@ def _to_valid_rgb(x: Tensor, *,
 def _linear_decorelate_color(image: Tensor, color_correlation_svd_sqrt: np.array) -> Tensor:
     max_norm_svd_sqrt = np.max(np.linalg.norm(color_correlation_svd_sqrt, axis=0))
     color_correlation_normalized = color_correlation_svd_sqrt / max_norm_svd_sqrt
-    color_correlation_normalized = torch.tensor(color_correlation_normalized).float()
+    color_correlation_normalized = torch.tensor(color_correlation_normalized, dtype=torch.float32, device=image.device)
 
     flat = image.view(-1, 3)
     flat = torch.matmul(flat, color_correlation_normalized.T)
