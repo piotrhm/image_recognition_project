@@ -81,29 +81,29 @@ def optimize_model(model: nn.Module,
 
     @torch.no_grad()
     def _transform_to_image(x: Tensor) -> Tensor:
-        x = parametrization_transform_fn(x)
         x = x.detach().cpu().clone()
         x.data = transform_fn(x.data)
+        x = parametrization_transform_fn(x)
         x = denormalization_transform_fn(x)
         return x
 
     input_tensor = input_tensor.to(next(model.parameters()).device)
     input_tensor.requires_grad_()
+    optimizer_parameters = [input_tensor] if optimizer_parameters is None else optimizer_parameters
     optimizer = optimizer_cls(params=optimizer_parameters, **optimizer_kwargs)
     if lr_scheduler_cls is not None:
         lr_scheduler = lr_scheduler_cls(optimizer, **lr_scheduler_kwargs)
     for i in range(optimization_steps):
         optimizer.zero_grad()
+        input_tensor.data = transform_fn(input_tensor.data)
+        input_tensor.data = robustness_transform_fn(input_tensor.data)
         parametrized_input = parametrization_transform_fn(input_tensor)
-        parametrized_input.data = transform_fn(parametrized_input.data)
-        parametrized_input.data = robustness_transform_fn(parametrized_input.data)
         loss = loss_agg_fn(model, parametrized_input.unsqueeze(0), prototypes_mask.unsqueeze(0))
         loss.backward()
-        parametrized_input.grad = gradient_transform_fn(parametrized_input.grad)
+        input_tensor.grad = gradient_transform_fn(input_tensor.grad)
         optimizer.step()
         if reverse_reversible_robustness_transforms:
-            parametrized_input.data = robustness_transform_fn.reverse_transform(parametrized_input.data)
-
+            input_tensor.data = robustness_transform_fn.reverse_transform(input_tensor.data)
         if print_interval and i % print_interval == 0:
             if lr_scheduler_cls is not None:
                 print(f'step: {i}/{optimization_steps}, loss: {loss}, lr: {lr_scheduler.get_last_lr()[0]}')
