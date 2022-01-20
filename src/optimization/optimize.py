@@ -1,5 +1,6 @@
 from typing import Type, Dict, Any, Optional, Union, List, Tuple
 
+import einops
 import torch
 import torch.nn as nn
 import torchvision.transforms.functional as F
@@ -32,6 +33,7 @@ def optimize_model(model: nn.Module,
                    print_interval: Optional[int],
                    display_interval: Optional[int],
                    return_optimized_input: bool = False,
+                   diversity_term: bool = False
                    ) -> Union[Tensor, Tuple[Tensor, Tensor]]:
     """
     Optimizes a tensor to minimize loss given by loss_agg_fn.
@@ -65,6 +67,7 @@ def optimize_model(model: nn.Module,
         print_interval: prints logs every `print_interval` steps
         display_interval: displays optimized image every `display_interval` steps
         return_optimized_input: whether to additionally return optimized input.
+        diversity_term: whether to add diversity term
     Returns:
         Optimized image and optimized input (optionally).
     """
@@ -87,32 +90,45 @@ def optimize_model(model: nn.Module,
         x = denormalization_transform_fn(x)
         return x
 
+    if diversity_term:
+        prototypes_mask = einops.repeat(prototypes_mask.unsqueeze(0), 'h w -> (repeat h) w', repeat=3)
+
     input_tensor = input_tensor.to(next(model.parameters()).device)
     input_tensor.requires_grad_()
     optimizer_parameters = [input_tensor] if optimizer_parameters is None else optimizer_parameters
     optimizer = optimizer_cls(params=optimizer_parameters, **optimizer_kwargs)
+
     if lr_scheduler_cls is not None:
         lr_scheduler = lr_scheduler_cls(optimizer, **lr_scheduler_kwargs)
+
     for i in range(optimization_steps):
         optimizer.zero_grad()
         input_tensor.data = transform_fn(input_tensor.data)
         input_tensor.data = robustness_transform_fn(input_tensor.data)
         parametrized_input = parametrization_transform_fn(input_tensor)
-        loss = loss_agg_fn(model, parametrized_input.unsqueeze(0), prototypes_mask.unsqueeze(0))
+
+        if diversity_term:
+            loss = loss_agg_fn(model, parametrized_input, prototypes_mask, diversity_term)
+        else:
+            loss = loss_agg_fn(model, parametrized_input.unsqueeze(0), prototypes_mask.unsqueeze(0))
+
         loss.backward()
         input_tensor.grad = gradient_transform_fn(input_tensor.grad)
         optimizer.step()
+
         if reverse_reversible_robustness_transforms:
             input_tensor.data = robustness_transform_fn.reverse_transform(input_tensor.data)
+
         if print_interval and i % print_interval == 0:
             if lr_scheduler_cls is not None:
                 print(f'step: {i}/{optimization_steps}, loss: {loss}, lr: {lr_scheduler.get_last_lr()[0]}')
             else:
                 print(f'step: {i}/{optimization_steps}, loss: {loss}')
 
-        if display_interval and i % display_interval == 0:
+        if display_interval and i % display_interval == 0 and not diversity_term:
             output_image = _transform_to_image(input_tensor)
             display(F.to_pil_image(output_image))
+
         if lr_scheduler_cls is not None and i % lr_scheduler_step_interval == 0:
             lr_scheduler.step()
 
