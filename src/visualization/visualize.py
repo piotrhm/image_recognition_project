@@ -70,6 +70,7 @@ def visualize_prototypes(model: nn.Module,
         Optimized tensor
     """
     model = prepare_model_for_prototype_optimization(model)
+    diversity_term = True if len(input_tensor.shape) > 3 else False
     prototypes_mask = get_prototypes_mask_from_prototypes_list(model, prototypes_list)
     optimizer_kwargs = optimizer_kwargs if optimizer_kwargs is not None else {'lr': 0.01}
     optimized_input = optimize_model(model=model,
@@ -90,7 +91,9 @@ def visualize_prototypes(model: nn.Module,
                                      denormalization_transforms=denormalization_transforms,
                                      reverse_reversible_robustness_transforms=reverse_reversible_robustness_transforms,
                                      print_interval=print_interval,
-                                     display_interval=display_interval)
+                                     display_interval=display_interval,
+                                     diversity_term=diversity_term
+                                     )
     return optimized_input
 
 
@@ -153,6 +156,7 @@ def visualize_prototypes_octaves(model: nn.Module,
         Optimized tensor
     """
     model = prepare_model_for_prototype_optimization(model)
+    diversity_term = True if len(input_tensor.shape) > 3 else False
     prototypes_mask = get_prototypes_mask_from_prototypes_list(model, prototypes_list)
     optimizer_kwargs = optimizer_kwargs if optimizer_kwargs is not None else {'lr': 0.01}
 
@@ -187,7 +191,8 @@ def visualize_prototypes_octaves(model: nn.Module,
                                                           reverse_reversible_robustness_transforms,
                                                           print_interval=print_interval,
                                                           display_interval=display_interval,
-                                                          return_optimized_input=True)
+                                                          return_optimized_input=True,
+                                                          diversity_term=diversity_term,)
         detail = optimized_input - base
 
     return optimized_image
